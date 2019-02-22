@@ -1,11 +1,40 @@
 <!--  -->
 <template>
   <div class="container">
-    <button type="button" id="downloadAndView">加载Dicom</button>
-    <button type="button" @click="loadImage">加载Dicom2</button>
-    <div id="loadProgress" style="position:relative;">Dicom加载:</div>
-    <div id="dicomImage" style="width:512px;height:512px;" oncontextmenu="return false"></div>
-    <div ref="canvas"></div>
+    <ul class="tools"><li></li><li></li><li></li><li></li><li></li><li></li></ul>
+    <i class="line"></i>
+    <div class="main">
+      <aside>
+        <ul class="imglist">
+          <li v-for="(images,i) in imgList" :key="i">
+            <!-- <div class="preview" v-if="images.modality==='Case'||images.modality==='Report'"> -->
+            <div class="preview">
+              <img :src="images.url[0]" alt="">
+              <img v-if="images.url.length>2" :src="images.url[Math.floor(images.url.length/2)]" alt="">
+              <img v-if="images.url.length>1" :src="images.url[images.url.length-1]" alt="">
+            </div>
+            <div class="state">
+              <i :class="{'red': j===0||j===images.url.length-1||j===Math.floor(images.url.length/2)}" 
+                v-for="(url,j) in images.url" :key="j">
+                <img 
+                  @load="loadImage($event)" 
+                  class="hide" 
+                  :src="images.modality==='Case'||images.modality==='Report' ? url : 
+                  'http://demo.xrimage.com:8001/1_0_0_0/'+images.url[j].replace('../','')" 
+                  alt=""></i>
+            </div>
+          </li>
+        </ul>
+      </aside>
+      <div>
+        <button type="button" id="downloadAndView">加载Dicom</button>
+        <button type="button" @click="loadImage">加载Dicom2</button>
+        <div id="loadProgress" style="position:relative;">Dicom加载:</div>
+        <div id="dicomImage" style="width:512px;height:512px;" oncontextmenu="return false"></div>
+        <div ref="canvas"></div>
+      </div>
+
+    </div>
 </div>
 </template>
 
@@ -15,10 +44,10 @@
 import * as cornerstone from "cornerstone-core";  // * 渲染我们的图像，并提供有用的事件和方法，以使工具能够响应视口变化
 import * as dicomParser from "dicom-parser";
 
- import Hammer from 'hammerjs'; // * 为触摸事件和手势添加跨浏览器支持
- import * as cornerstoneTools from 'cornerstone-tools';
-//  import cornerstoneTools from 'cornerstone-tools';
-//  import cornerstoneTools from '../../static/lib/cornerstone-tools.js';
+import Hammer from 'hammerjs'; // * 为触摸事件和手势添加跨浏览器支持
+// import * as cornerstoneTools from 'cornerstone-tools';
+import * as cornerstoneMath from 'cornerstone-math';
+import '../assets/js/cornerstoneTools.js';
 
 // 不建议 npm 安装 cornerstoneWADOImageLoader 如果你做了 会很头疼 
 import * as cornerstoneWADOImageLoader from "../../static/lib/cornerstoneWADOImageLoader.js";
@@ -48,11 +77,12 @@ cornerstoneWADOImageLoader.webWorkerManager.initialize(config);
   touchEnabled: false
 }; */
 console.log(cornerstoneTools);
-
+console.log(cornerstoneMath);
+cornerstoneTools.external.cornerstoneMath = cornerstoneMath;
+// cornerstoneTools.external.cornerstone = cornerstone;
 // var csTools = cornerstoneTools.init();
 // console.log(csTools);
 // csTools.addTool(cornerstoneTools.WwwcTool)
-
 
 export default {
   name: 'viewer',
@@ -60,7 +90,8 @@ export default {
     console.log(cornerstoneWADOImageLoader);
     
     return {
-      image: ''
+      image: '',
+      imgList: []
     }
   },
 
@@ -98,19 +129,8 @@ export default {
       let ctx = canvas.getContext('2d');
       ctx.putImageData(img,0,0)
     }) */
-    const _this = this;
-    var element = document.getElementById("dicomImage");
+    const element = document.querySelector('#dicomImage');
     cornerstone.enable(element);
-    // 为 加载Dicom 按钮添加 点击事件 拼接 url 调用 loadAndViewImage 函数
-    document
-      .getElementById("downloadAndView")
-      .addEventListener("click", function(e) {
-        let url = 'http://demo.xrimage.com:8001/1_0_0_0/ImageDiagnose/Wado/imagestream.do?studyUID=1.2.840.113619.2.334.3.279719701.328.1536622685.311&seriesUID=1.2.840.113619.2.334.3.279719701.328.1536622685.316.3&objectUID=1.2.840.113619.2.334.3.279719701.328.1536622685.385.1&type=dicom';
-        // 拼接url
-        url = "wadouri:" + url;
-        // 调用这个函数加载像,和激活工具
-        _this.loadAndViewImage(url);
-      });
     // Dicom 加载 进度
     cornerstone.events.addEventListener(
       "cornerstoneimageloadprogress",
@@ -125,18 +145,71 @@ export default {
   watch: { },
 
   methods: {
-    loadImage(){
+    loadImage(e){
+      e.target.parentNode.className = e.target.parentNode.className+' complete';
+      return
       const element = document.querySelector('#dicomImage');
-      cornerstoneTools.addToolState(element,'wwwc')
-      console.log(cornerstoneTools.displayTool(element));
-      cornerstoneTools.getToolOptions(element)
-      cornerstoneTools.getToolState(element)
-      cornerstoneTools.getToolState(element,'wwwc')
-      console.log(cornerstoneTools.addToolState);
+      console.log(element);
+      let url = 'http://demo.xrimage.com:8001/1_0_0_0/ImageDiagnose/Wado/imagestream.do?studyUID=1.2.840.113619.2.334.3.279719701.328.1536622685.311&seriesUID=1.2.840.113619.2.334.3.279719701.328.1536622685.316.3&objectUID=1.2.840.113619.2.334.3.279719701.328.1536622685.385.1&type=dicom';
+      // 拼接url
+      url = "wadouri:" + url;
+      // 调用这个函数加载像,和激活工具
+      this.loadAndViewImage(url);
+
+      console.log(cornerstoneTools.getToolState(element))
+      // cornerstoneTools.addToolState(element,cornerstoneTools.wwwc,'wwwc')
+      // console.log(cornerstoneTools.displayTool(element));
+      // console.log(cornerstoneTools.setToolOptions('wwwc',element,1))
+      // console.log(cornerstoneTools.getToolOptions(element))
+      // console.log(cornerstoneTools.getToolState(element,cornerstoneTools.wwwc))
+      // console.log(cornerstoneTools.getToolState);
+      
+      // console.log(cornerstoneTools.addToolState);
       
       // cornerstoneTools.wwwc(element,this.image);
       // csTools.addToolForElement(element,cornerstoneTools.WwwcTool)
       // console.log(cornerstoneTools['wwwc']);
+    },
+    
+    //当点击加载图像时 调用 loadAndViewImage 加载 Dicom 图像
+    loadAndViewImage(imageId) {
+      var _this = this;
+      //找到 要放置 Dicom Image 的元素
+      var element = document.getElementById("dicomImage");
+      // cornerstone.loadAndCacheImage 函数 负责加载图形 需要 图像地址 imageId
+      cornerstone.loadAndCacheImage(imageId).then(
+        function(image) {
+          console.log(image);
+          _this.image = image
+          var viewport = cornerstone.getDefaultViewportForImage(element, image);
+          console.log(viewport);
+          console.log(image.getPixelData());
+          let pixelData = image.getPixelData()
+          cornerstone.displayImage(element, image, viewport);
+          cornerstoneTools.mouseInput.enable(element);
+          cornerstoneTools.mouseWheelInput.enable(element)
+          // Enable all tools we want to use with this element
+          cornerstoneTools.wwwc.activate(element, 1); // ww/wc is the default tool for left mouse button
+          cornerstoneTools.pan.activate(element, 2); // pan is the default tool for middle mouse button
+          // cornerstoneTools.zoom.activate(el, 4); // zoom is the default tool for right mouse button
+          cornerstoneTools.zoomWheel.activate(element); // zoom is the default tool for middle mouse wheel
+          cornerstoneTools.probe.enable(element);
+          cornerstoneTools.length.enable(element);
+          cornerstoneTools.ellipticalRoi.enable(element);
+          cornerstoneTools.rectangleRoi.enable(element);
+          cornerstoneTools.simpleAngle.enable(element);
+          cornerstoneTools.highlight.enable(element);
+          cornerstoneTools.magnify.enable(element);
+
+          // console.log(cornerstone.getPixels(element, 0, 0, 512, 512));
+          // console.log(cornerstoneWADOImageLoader.getMinMax(cornerstone.getPixels(element, 0, 0, 512, 512)));
+          // getMinMax 获取像素最大最小值
+          // console.log(cornerstoneWADOImageLoader.getMinMax(image.getPixelData()));
+        },
+        function(err) {
+          console.log(err);
+        }
+      );
     },
     // * 患者序列
     getStudy(){
@@ -149,8 +222,7 @@ export default {
     getSeries(){
       this.$axios.post('/1_0_0_0/ImageDiagnose/Wado/series.do',this.$qs.stringify({studyID: 1070}))
       .then(res=>{
-        console.log(res);
-        
+        this.imgList = res.data;
       })
     },
     /* init() {
@@ -164,31 +236,6 @@ export default {
       // this.ctx.strokeRect(50, 50, 50, 50);
       return this.ctx;
     } */
-    //当点击加载图像时 调用 loadAndViewImage 加载 Dicom 图像
-    loadAndViewImage(imageId) {
-      var _this = this;
-      //找到 要放置 Dicom Image 的元素
-      var element = document.getElementById("dicomImage");
-      // cornerstone.loadAndCacheImage 函数 负责加载图形 需要 图像地址 imageId
-      cornerstone.loadAndCacheImage(imageId).then(
-        function(image) {
-          console.log(image);
-          _this.image = image
-          var viewport = cornerstone.getDefaultViewportForImage(element, image);
-          console.log(viewport);
-          // console.log(image.getPixelData());
-          let pixelData = image.getPixelData()
-          cornerstone.displayImage(element, image, viewport);
-          console.log(cornerstone.getPixels(element, 0, 0, 512, 512));
-          // console.log(cornerstoneWADOImageLoader.getMinMax(cornerstone.getPixels(element, 0, 0, 512, 512)));
-          // getMinMax 获取像素最大最小值
-          // console.log(cornerstoneWADOImageLoader.getMinMax(image.getPixelData()));
-        },
-        function(err) {
-          console.log(err);
-        }
-      );
-    }
   },
 
   components: { }
@@ -196,5 +243,74 @@ export default {
 </script>
 
 <style scoped lang="less">
+.container{
+  background: #262626;
+}
+.tools{
+  display: flex;
+  justify-content: flex-start;
+  height: 40px;
+  line-height: 40px;
+  li{
+    width: 36px;
+    height: 36px;
+    background: #000 url('../assets/images/tools/wwwc.svg') center/60% no-repeat;
+    margin-right: 8px;
+    border: 2px solid #666;
+  }
+  li:nth-child(2){
+    background: #000 url('../assets/images/tools/inverts.svg') center/60% no-repeat;
+  }
+  li:nth-child(3){
+    background: #000 url('../assets/images/tools/length.svg') center/60% no-repeat;
+  }
+  li:nth-child(4){
+    background: #000 url('../assets/images/tools/zoom.svg') center/60% no-repeat;
+  }
+  li:nth-child(5){
+    background: #000 url('../assets/images/tools/mpr3d.svg') center/60% no-repeat;
+  }
+  li:nth-child(6){
+    background: #000 url('../assets/images/tools/wwwc.svg') center/60% no-repeat;
+  }
+}
+.imglist{
+  width: 200px;
+  height: 100px;
+  margin-top: 8px;
+  border-right: 6px solid #111;
+  .preview{
+    display: flex;
+    justify-content: flex-start;
+    img{
+      width: 50px;
+      height: 50px;
+      margin-right: 8px;
+    }
+  }
+  .state {
+    display: flex;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    margin: 6px 0 10px;
+    i{
+      width: 6px;
+      height: 6px;
+      background: #bfbfbf;
+      margin: 1px;
+    }
+    i.red{
+      background: red;
+    }
+    .complete{
+      background: #f5f5f5;
+    }
+  }
+}
+
+.main{
+  display: flex;
+  justify-content: flex-start;
+}
 
 </style>

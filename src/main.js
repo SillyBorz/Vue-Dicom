@@ -4,9 +4,10 @@ import Vue from 'vue'
 import App from './App'
 import router from './router'
 import axios from 'axios'
-import 'babel-polyfill'
-
 import qs from 'qs'
+
+import 'babel-polyfill'
+import './assets/css/reset.css'
 
 Vue.prototype.$axios = axios
 Vue.prototype.$qs = qs
