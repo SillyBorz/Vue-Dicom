@@ -7,17 +7,22 @@
       <aside>
         <ul class="imglist">
           <li v-for="(images,i) in imgList" :key="i">
-            <!-- <div class="preview" v-if="images.modality==='Case'||images.modality==='Report'"> -->
-            <div class="preview">
-              <img :src="images.url[0]" alt="">
-              <img v-if="images.url.length>2" :src="images.url[Math.floor(images.url.length/2)]" alt="">
-              <img v-if="images.url.length>1" :src="images.url[images.url.length-1]" alt="">
+            <p class="info"><span>{{images.seriesDesc}}</span><span>{{`${images.totalInstances} Images  ${images.modality}`}}</span></p>
+            <div class="preview" v-if="images.modality==='Case'||images.modality==='Report'">
+              <img @click="drawImage(i,0)" :src="images.url[0]" alt="">
+              <img @click="drawImage(i,Math.floor(images.url.length/2))" v-if="images.url.length>2" :src="images.url[Math.floor(images.url.length/2)]" alt="">
+              <img @click="drawImage(i,images.url.length-1)" v-if="images.url.length>1" :src="images.url[images.url.length-1]" alt="">
+            </div>
+            <div v-else class="preview">
+              <img @click="drawImage(i,0)" :src="'http://demo.xrimage.com:8001/1_0_0_0/'+images.url[0].replace('../','')" alt="">
+              <img @click="drawImage(i,Math.floor(images.url.length/2))" v-if="images.url.length>2" :src="'http://demo.xrimage.com:8001/1_0_0_0/'+images.url[Math.floor(images.url.length/2)].replace('../','')" alt="">
+              <img @click="drawImage(i,images.url.length-1)" v-if="images.url.length>1" :src="'http://demo.xrimage.com:8001/1_0_0_0/'+images.url[images.url.length-1].replace('../','')" alt="">
             </div>
             <div class="state">
               <i :class="{'red': j===0||j===images.url.length-1||j===Math.floor(images.url.length/2)}" 
                 v-for="(url,j) in images.url" :key="j">
                 <img 
-                  @load="loadImage($event)" 
+                  @load="loadImage($event,)" 
                   class="hide" 
                   :src="images.modality==='Case'||images.modality==='Report' ? url : 
                   'http://demo.xrimage.com:8001/1_0_0_0/'+images.url[j].replace('../','')" 
@@ -91,7 +96,9 @@ export default {
     
     return {
       image: '',
-      imgList: []
+      imgList: [],
+      imgRow: 0,  // * 序列下标
+      imgCol: 0,  // * 对应序列的图片下标
     }
   },
 
@@ -145,34 +152,19 @@ export default {
   watch: { },
 
   methods: {
+    drawImage(r,c){
+      r && (this.imgRow = r);
+      c && (this.imgCol = c);
+      this.loadAndViewImage("wadouri:http://demo.xrimage.com:8001/1_0_0_0/" + this.imgList[this.imgRow].url[this.imgCol].replace('../','')+'&type=dicom')
+    },
     loadImage(e){
       e.target.parentNode.className = e.target.parentNode.className+' complete';
-      return
-      const element = document.querySelector('#dicomImage');
-      console.log(element);
-      let url = 'http://demo.xrimage.com:8001/1_0_0_0/ImageDiagnose/Wado/imagestream.do?studyUID=1.2.840.113619.2.334.3.279719701.328.1536622685.311&seriesUID=1.2.840.113619.2.334.3.279719701.328.1536622685.316.3&objectUID=1.2.840.113619.2.334.3.279719701.328.1536622685.385.1&type=dicom';
-      // 拼接url
-      url = "wadouri:" + url;
-      // 调用这个函数加载像,和激活工具
-      this.loadAndViewImage(url);
-
-      console.log(cornerstoneTools.getToolState(element))
-      // cornerstoneTools.addToolState(element,cornerstoneTools.wwwc,'wwwc')
-      // console.log(cornerstoneTools.displayTool(element));
-      // console.log(cornerstoneTools.setToolOptions('wwwc',element,1))
-      // console.log(cornerstoneTools.getToolOptions(element))
-      // console.log(cornerstoneTools.getToolState(element,cornerstoneTools.wwwc))
-      // console.log(cornerstoneTools.getToolState);
-      
-      // console.log(cornerstoneTools.addToolState);
-      
-      // cornerstoneTools.wwwc(element,this.image);
-      // csTools.addToolForElement(element,cornerstoneTools.WwwcTool)
-      // console.log(cornerstoneTools['wwwc']);
     },
     
     //当点击加载图像时 调用 loadAndViewImage 加载 Dicom 图像
     loadAndViewImage(imageId) {
+      console.log(imageId);
+      
       var _this = this;
       //找到 要放置 Dicom Image 的元素
       var element = document.getElementById("dicomImage");
@@ -275,24 +267,32 @@ export default {
   }
 }
 .imglist{
-  width: 200px;
-  height: 100px;
+  width: 300px;
   margin-top: 8px;
   border-right: 6px solid #111;
   .preview{
     display: flex;
     justify-content: flex-start;
     img{
-      width: 50px;
-      height: 50px;
-      margin-right: 8px;
+      width: 80px;
+      height: 80px;
+      margin-right: 16px;
     }
+  }
+  .info{
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 8px;
+    margin-bottom: 8px;
+    font-size: 16px;
+    color: #ffa940;
+    background: #333;
   }
   .state {
     display: flex;
     justify-content: flex-start;
     flex-wrap: wrap;
-    margin: 6px 0 10px;
+    margin: 12px 0 20px;
     i{
       width: 6px;
       height: 6px;
