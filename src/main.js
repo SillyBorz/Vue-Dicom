@@ -6,6 +6,10 @@ import router from './router'
 import axios from 'axios'
 import qs from 'qs'
 
+import { Slider } from 'iview';
+import 'iview/dist/styles/iview.css';
+Vue.component('Slider', Slider);
+
 import 'babel-polyfill'
 import './assets/css/reset.css'
 
