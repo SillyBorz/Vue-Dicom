@@ -135,17 +135,20 @@ export default {
         this.drawImage(this.imgRow,this.imgCol)
       },1000/this.interval)
     },
+    imgCol(){
+      this.drawImage(this.imgRow,this.imgCol)
+    },
   },
 
   methods: {
     mouseWheel(e){
       // e.deltaY 大于 0时向下滚动，小于0时向上滚动
       if (e.deltaY>0) {
-        this.imgCol++;
-        if (this.imgCol > this.imgEl[this.imgRow].length-1) this.imgCol=0;
+        if (this.imgCol >= this.imgEl[this.imgRow].length-1) this.imgCol=0
+        else this.imgCol++;
       }else{
-        this.imgCol--;
-        if (this.imgCol<0) this.imgCol=this.imgEl[this.imgRow].length-1;
+        if (this.imgCol<=0) this.imgCol=this.imgEl[this.imgRow].length-1
+        else this.imgCol--;
       }
       // this.drawImage(this.imgRow,this.imgCol)
     },
@@ -155,12 +158,11 @@ export default {
 
       if(r!==this.imgRow) { // * 切换了序列
         this.imgRow = r;
-        this.imgCol = c;
-        this.getImageDo(this.imgList[this.imgRow].studyUID,this.imgList[this.imgRow].seriesUID);
+        this.getImageDo(this.imgList[this.imgRow].studyUID,this.imgList[this.imgRow].seriesUID, c);
         return
       }
       this.imgCol = c;
-      this.drawImage(this.imgRow,this.imgCol)
+      // this.drawImage(this.imgRow,this.imgCol)
       // this.loadAndViewImage("wadouri:" + this.imgList[this.imgRow].url[this.imgCol]+'&type=dicom')
     },
     
@@ -187,10 +189,10 @@ export default {
     },
     // * 图片加载
     loadImageState(e,row,col){
-      if (row===0&&col===0) this.getImageDo(this.imgList[0].studyUID,this.imgList[0].seriesUID); 
       if (!this.imgEl[row]) this.imgEl[row] = [];
       // this.imgEl[row][col] = this.imgList[row].url[col];
       this.imgEl[row][col] = e.target;
+      if (row===0&&col===0) this.drawImage(0,0); 
       e.target.parentNode.className = e.target.parentNode.className+' complete';
     },
     
@@ -245,20 +247,21 @@ export default {
       this.$axios.post('/1_0_0_0/ImageDiagnose/Wado/series.do',this.$qs.stringify({studyID: 1070}))
       .then(res=>{
         this.imgList = res.data;
-        this.imgList.forEach(v=>{
+        this.imageDo = new Array(this.imgList.length)
+        this.imgList.forEach((v,j)=>{
           v.url.forEach((url,i)=>{
             if (url.includes('../')) v.url[i] = 'http://demo.xrimage.com:8001/1_0_0_0/'+url.replace('../','');  
           })
+          this.getImageDo(v.studyUID,v.seriesUID,j)
         })
-        this.currentImgList = this.imgList[0]
+        // this.currentImgList = this.imgList[0]
       })
     },
     // * 获取序列详情
-    getImageDo(studyUID,seriesUID){
+    getImageDo(studyUID,seriesUID,i){
       this.$axios.post('/1_0_0_0/ImageDiagnose/Wado/image.do',this.$qs.stringify({studyUID: studyUID,seriesUID: seriesUID}))
       .then(res=>{ 
-        this.imageDo = res.data; 
-        this.drawImage(this.imgRow,this.imgCol)
+        this.imageDo[i] = res.data; 
       })
     },
   },
